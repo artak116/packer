@@ -1,0 +1,47 @@
+---
+
+- name: install neceesarry packages
+  apt: name={{item}} state=latest update_cache=yes
+  with_items:
+    - build-essential
+    - libssl-dev
+    - libffi-dev
+    - python-dev
+    - python-pip
+    - jq
+
+- name: Install awscli and ansible
+  pip:
+    name: "{{item}}"
+  with_items:
+    - boto
+    - boto3
+    - awscli
+    - ansible
+
+- name: install tinc vpn
+  apt: name=tinc state=latest
+
+- name: be sure tinc is stopped/disabled
+  systemd: name=tinc state=stopped enabled=no
+
+- name: enable ip forwarding
+  blockinfile:
+    block: "net.ipv4.ip_forward = 1"
+    dest: "/etc/sysctl.conf"
+
+
+- name: be sure repo folder is exists
+  file:
+    path: /opt/repos
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: 0775
+
+- name: add @reboot cron entry
+  cron:
+    name: "post-scripts configurations"
+    user: "ubuntu"
+    special_time: reboot
+    job: "/usr/local/bin/ansible-pull --full -d /opt/repos/post-scripts/ -U https://github.com/artak116/postscripts.git tinc-vpn.yml >> /tmp/posrscripts.log 2>&1"
